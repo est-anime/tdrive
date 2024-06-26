@@ -26,7 +26,7 @@
 .sidebar {
     width: 250px;
     height: 100%;
-    background-color: #f8fafd;
+    background-color: #000000;
     padding: 20px;
     display: flex;
     flex-direction: column;
@@ -54,8 +54,8 @@
 
 .sidebar .new-button {
     padding: 15px 20px;
-    background-color: #fff;
-    border: 1px solid #e0e0e0;
+    background-color: #717171;
+    border: 1px solid #000000;
     border-radius: 20px;
     margin-top: 20px;
     display: flex;
@@ -65,7 +65,7 @@
     transition: all 0.3s ease;
     box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
     font-size: 0.9rem;
-    color: #282c35;
+    color: #ffffff;
     font-weight: 500;
 }
 
@@ -342,7 +342,7 @@
     display: flex;
     align-items: center;
     justify-content: start;
-    color: #444746;
+    color: #ffffff;
     font-size: 0.9rem;
     font-weight: 400;
     text-decoration: none;
@@ -351,7 +351,7 @@
 }
 
 .sidebar-menu .selected-item {
-    background-color: #c2e7ff;
+    background-color: #ff0000;
 }
 
 .sidebar-menu .unselected-item:hover {
@@ -376,7 +376,7 @@
     flex-direction: column;
     justify-content: start;
     align-items: start;
-    background-color: #f8fafd;
+    background-color: #000000;
 }
 
 .main-content .header {
@@ -397,7 +397,7 @@
     display: flex;
     align-items: center;
     justify-content: start;
-    background-color: #e9eef6;
+    background-color: #494949;
     border-radius: 20px;
     padding: 10px 20px;
 }
@@ -412,7 +412,7 @@
     width: 100%;
     border: none;
     outline: none;
-    background-color: transparent;
+    background-color: #494949;
     font-size: 1rem;
     font-weight: 400;
 }
@@ -423,7 +423,7 @@
 }
 
 .directory {
-    background-color: #fff;
+    background-color: #000;
     padding: 10px 20px;
     width: 100%;
     height: 100%;
@@ -440,16 +440,16 @@
     text-align: start;
     font-size: 0.9rem;
     font-weight: 500;
-    color: #444746;
+    color: #2dffb9;
     padding: 10px 0px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid #ff0000;
 }
 
 .directory table tr td {
     text-align: start;
     font-size: 0.9rem;
     font-weight: 400;
-    color: #444746;
+    color: #ceffef;
     border-bottom: 1px solid #e0e0e0;
     height: 50px;
 }
