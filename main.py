@@ -1,8 +1,6 @@
 from utils.downloader import (
     download_file,
-    download_file_using_curl_cffi,
     get_file_info_from_url,
-    get_file_info_from_url_using_curl_cffi,
 )
 import asyncio
 from pathlib import Path
@@ -110,8 +108,12 @@ async def api_get_directory(request: Request):
 
     data = await request.json()
 
-    if data["password"] != ADMIN_PASSWORD:
-        return JSONResponse({"status": "Invalid password"})
+    if data["password"] == ADMIN_PASSWORD:
+        is_admin = True
+    else:
+        is_admin = False
+
+    auth = data.get("auth")
 
     logger.info(f"getFolder {data}")
 
@@ -127,10 +129,19 @@ async def api_get_directory(request: Request):
         folder_data = convert_class_to_dict(data, isObject=False, showtrash=False)
         print(folder_data)
 
+    elif "/share_" in data["path"]:
+        path = data["path"].split("_", 1)[1]
+        folder_data, auth_home_path = DRIVE_DATA.get_directory(path, is_admin, auth)
+        auth_home_path= auth_home_path.replace("//", "/") if auth_home_path else None
+        folder_data = convert_class_to_dict(folder_data, isObject=True, showtrash=False)
+        return JSONResponse(
+            {"status": "ok", "data": folder_data, "auth_home_path": auth_home_path}
+        )
+
     else:
         folder_data = DRIVE_DATA.get_directory(data["path"])
         folder_data = convert_class_to_dict(folder_data, isObject=True, showtrash=False)
-    return JSONResponse({"status": "ok", "data": folder_data})
+    return JSONResponse({"status": "ok", "data": folder_data, "auth_home_path": None})
 
 
 SAVE_PROGRESS = {}
@@ -285,10 +296,7 @@ async def getFileInfoFromUrl(request: Request):
 
     logger.info(f"getFileInfoFromUrl {data}")
     try:
-        try:
-            file_info = await get_file_info_from_url(data["url"])
-        except Exception as e:
-            file_info = await get_file_info_from_url_using_curl_cffi(data["url"])
+        file_info = await get_file_info_from_url(data["url"])
         return JSONResponse({"status": "ok", "data": file_info})
     except Exception as e:
         return JSONResponse({"status": str(e)})
@@ -304,16 +312,9 @@ async def startFileDownloadFromUrl(request: Request):
     logger.info(f"startFileDownloadFromUrl {data}")
     try:
         id = getRandomID()
-        if data["curl_cffi"] == True:
-            asyncio.create_task(
-                download_file_using_curl_cffi(
-                    data["url"], id, data["path"], data["filename"]
-                )
-            )
-        else:
-            asyncio.create_task(
-                download_file(data["url"], id, data["path"], data["filename"])
-            )
+        asyncio.create_task(
+            download_file(data["url"], id, data["path"], data["filename"], data["singleThreaded"])
+        )
         return JSONResponse({"status": "ok", "id": id})
     except Exception as e:
         return JSONResponse({"status": str(e)})
@@ -333,5 +334,23 @@ async def getFileDownloadProgress(request: Request):
     try:
         progress = DOWNLOAD_PROGRESS[data["id"]]
         return JSONResponse({"status": "ok", "data": progress})
+    except:
+        return JSONResponse({"status": "not found"})
+
+
+@app.post("/api/getFolderShareAuth")
+async def getFolderShareAuth(request: Request):
+    from utils.directoryHandler import DRIVE_DATA
+
+    data = await request.json()
+
+    if data["password"] != ADMIN_PASSWORD:
+        return JSONResponse({"status": "Invalid password"})
+
+    logger.info(f"getFolderShareAuth {data}")
+
+    try:
+        auth = DRIVE_DATA.get_folder_auth(data["path"])
+        return JSONResponse({"status": "ok", "auth": auth})
     except:
         return JSONResponse({"status": "not found"})
