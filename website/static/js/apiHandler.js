@@ -27,15 +27,32 @@ document.getElementById('pass-login').addEventListener('click', async () => {
 })
 
 async function getCurrentDirectory() {
-    const path = getCurrentPath()
+    let path = getCurrentPath()
     if (path === 'redirect') {
         return
     }
     try {
-        const data = { 'path': path }
+        const auth = getFolderAuthFromPath()
+        console.log(path)
+
+        const data = { 'path': path, 'auth': auth }
         const json = await postJson('/api/getDirectory', data)
 
         if (json.status === 'ok') {
+            if (getCurrentPath().startsWith('/share')) {
+                const sections = document.querySelector('.sidebar-menu').getElementsByTagName('a')
+                console.log(path)
+
+                if (removeSlash(json['auth_home_path']) === removeSlash(path.split('_')[1])) {
+                    sections[0].setAttribute('class', 'selected-item')
+
+                } else {
+                    sections[0].setAttribute('class', 'unselected-item')
+                }
+                sections[0].href = `/?path=/share_${removeSlash(json['auth_home_path'])}&auth=${auth}`
+                console.log(`/?path=/share_${removeSlash(json['auth_home_path'])}&auth=${auth}`)
+            }
+
             console.log(json)
             showDirectory(json['data'])
         } else {
@@ -73,6 +90,17 @@ async function createNewFolder() {
         }
     } else {
         alert('Folder Name Cannot Be Empty')
+    }
+}
+
+
+async function getFolderShareAuth(path) {
+    const data = { 'path': path }
+    const json = await postJson('/api/getFolderShareAuth', data)
+    if (json.status === 'ok') {
+        return json.auth
+    } else {
+        alert('Error Getting Folder Share Auth')
     }
 }
 
@@ -229,8 +257,8 @@ async function get_file_info_from_url(url) {
 
 }
 
-async function start_file_download_from_url(url, filename, curl_cffi) {
-    const data = { 'url': url, 'path': getCurrentPath(), 'filename': filename, 'curl_cffi': curl_cffi }
+async function start_file_download_from_url(url, filename, singleThreaded) {
+    const data = { 'url': url, 'path': getCurrentPath(), 'filename': filename, 'singleThreaded': singleThreaded }
     const json = await postJson('/api/startFileDownloadFromUrl', data)
     if (json.status === 'ok') {
         return json.id
@@ -250,21 +278,12 @@ async function download_progress_updater(id, file_name, file_size) {
 
     document.getElementById('upload-filename').innerText = 'Filename: ' + file_name;
     document.getElementById('upload-filesize').innerText = 'Filesize: ' + (file_size / (1024 * 1024)).toFixed(2) + ' MB';
-    document.getElementById('upload-status').innerText = 'Status: Downloading File From Url To Backend Server';
 
     const interval = setInterval(async () => {
         const response = await postJson('/api/getFileDownloadProgress', { 'id': id })
         const data = response['data']
 
-        if (data[0] === 'running') {
-            const current = data[1];
-            const total = data[2];
-
-            const percentComplete = (current / total) * 100;
-            progressBar.style.width = percentComplete + '%';
-            uploadPercent.innerText = 'Progress : ' + percentComplete.toFixed(2) + '%';
-        }
-        else if (data[0] === 'error') {
+        if (data[0] === 'error') {
             clearInterval(interval);
             alert('Failed To Download File From URL To Backend Server')
             window.location.reload()
@@ -274,6 +293,21 @@ async function download_progress_updater(id, file_name, file_size) {
             uploadPercent.innerText = 'Progress : 100%'
             progressBar.style.width = '100%';
             await handleUpload2(id)
+        }
+        else {
+            const current = data[1];
+            const total = data[2];
+
+            const percentComplete = (current / total) * 100;
+            progressBar.style.width = percentComplete + '%';
+            uploadPercent.innerText = 'Progress : ' + percentComplete.toFixed(2) + '%';
+
+            if (data[0] === 'Downloading') {
+                document.getElementById('upload-status').innerText = 'Status: Downloading File From Url To Backend Server';
+            }
+            else {
+                document.getElementById('upload-status').innerText = `Status: ${data[0]}`;
+            }
         }
     }, 3000)
 }
@@ -287,17 +321,17 @@ async function Start_URL_Upload() {
         }, 300)
 
         const file_url = document.getElementById('remote-url').value
+        const singleThreaded = document.getElementById('single-threaded-toggle').checked
 
         const file_info = await get_file_info_from_url(file_url)
         const file_name = file_info.file_name
         const file_size = file_info.file_size
-        const curl_cffi = file_info.curl_cffi
 
         if (file_size > MAX_FILE_SIZE) {
             throw new Error(`File size exceeds ${(MAX_FILE_SIZE / (1024 * 1024 * 1024)).toFixed(2)} GB limit`)
         }
 
-        const id = await start_file_download_from_url(file_url, file_name, curl_cffi)
+        const id = await start_file_download_from_url(file_url, file_name, singleThreaded)
 
         await download_progress_updater(id, file_name, file_size)
 
